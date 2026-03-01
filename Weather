@@ -1,0 +1,144 @@
+#include <ESP8266WiFi.h>
+#include <FirebaseArduino.h>
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+#include<dht.h>
+
+#define DHT11_PIN D5
+dht DHT;
+
+#define FIREBASE_HOST "weather-df13c-default-rtdb.firebaseio.com"
+#define FIREBASE_AUTH "76FSYlbkcVtncJF8aWxkfQ4sal4KGXasZ9ONNsn2"
+#define WIFI_SSID "weatheriot"
+#define WIFI_PASSWORD "weatheriot01"
+
+int rain=A0;
+int buz=D0;
+int gas=D6;
+//int led4=D8;
+int i;
+
+void setup() 
+{
+Serial.begin(9600);
+lcd.begin();
+lcd.clear();
+lcd.print("WELCOME");
+lcd.setCursor(0,1);
+lcd.print("WEATHER STATION");
+pinMode(rain,INPUT);
+pinMode(buz,OUTPUT);
+pinMode(gas,INPUT);
+digitalWrite(buz,HIGH);
+WiFi.begin(WIFI_SSID,WIFI_PASSWORD);
+    Serial.print("Connecting");
+    while(WiFi.status() != WL_CONNECTED)
+    {
+        Serial.print(".");
+        delay(500);
+      }
+      Serial.println();
+      Serial.print("connected: ");
+      Serial.println(WiFi.localIP());
+
+      Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);  
+delay(2000);
+ lcd.clear();
+}
+
+void loop() 
+{
+
+  if(Firebase.failed())
+     {
+       Serial.print("Firebase error");
+       Serial.println(Firebase.error());
+     }     
+  
+ int chk = DHT.read11(DHT11_PIN);
+     int temp = DHT.temperature;
+     int hum = DHT.humidity;
+
+
+       Serial.print("TEMP:");
+       Serial.println(temp);
+ Serial.print("HUM:");
+       Serial.println(hum);
+        Serial.println("RAIN");
+       Serial.println(analogRead(rain));
+        Serial.println("gas");
+       Serial.println(digitalRead(gas));
+      
+       
+       lcd.setCursor(0,0);
+lcd.print("TEM:");
+   lcd.setCursor(5,0);
+lcd.print(temp);
+ lcd.setCursor(8,0);
+lcd.print("HUM:");
+   lcd.setCursor(13,0);
+lcd.print(hum);
+
+
+ lcd.setCursor(0,1);
+lcd.print("RAIN:");
+   lcd.setCursor(8,1);
+lcd.print("Air:");
+  
+
+delay(1000);
+   
+Firebase.setFloat ("WEATHERSTATION/TEMP",DHT.temperature);
+Firebase.setFloat ("WEATHERSTATION/HUMIDITY",DHT.humidity);
+//Firebase.setFloat ("WEATHERSTATION/LDR",digitalRead(ldr));
+Firebase.setFloat ("WEATHERSTATION/RAIN",digitalRead(gas));
+
+int rain_v=analogRead(rain);
+
+if(rain_v>100)
+{
+  digitalWrite(buz,LOW);
+  
+ lcd.setCursor(5,1);
+lcd.print("Y");
+ 
+        Serial.println("rain yes");
+       Firebase.setFloat ("WEATHERSTATION/SRAIN",i);
+    i++;
+}
+
+if(rain_v<100)
+{
+  digitalWrite(buz,HIGH);
+ lcd.setCursor(5,1);
+lcd.print("N");
+  Firebase.setFloat ("WEATHERSTATION/NRAIN",i);
+    i++;
+        Serial.println("No  rain");
+      
+}
+  if(digitalRead(gas)==0)
+  {
+     lcd.setCursor(13,1);
+lcd.print("ABN");
+    Firebase.setFloat ("WEATHERSTATION/YGAS",i);
+    i++;
+     Serial.println("YES GAS ");
+
+
+    }
+
+  if(digitalRead(gas)==1)
+  {
+      lcd.setCursor(13,1);
+lcd.print("NR ");
+    Firebase.setFloat ("WEATHERSTATION/NGAS",i);
+    i++;
+     Serial.println("NO GAS ");
+
+    }
+
+
+
+}
